@@ -49,3 +49,13 @@ docker-compose.override.yml
 
 # Local configuration
 *.local
+
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Terraform variables containing secrets
+*.tfvars
+*.tfvars.json
