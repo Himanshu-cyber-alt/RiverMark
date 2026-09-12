@@ -165,26 +165,28 @@ jobs:
       # Deploy to inactive EC2
       # ========================================================
 
+  
+
       - name: Deploy to inactive EC2 using SSM
         run: |
 
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$TARGET_INSTANCE" \
             --document-name "AWS-RunShellScript" \
-            --parameters commands="[
-              \"set -e\",
-              \"echo 'Logging into ECR...'\",
-              \"aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URL\",
-              \"echo 'Pulling image...'\",
-              \"docker pull $ECR_URL:${GITHUB_SHA}\",
-              \"echo 'Removing previous container...'\",
-              \"docker rm -f rivermark-backend 2>/dev/null || true\",
-              \"echo 'Getting DB password from SSM...'\",
-              \"DB_PASSWORD=\\$(aws ssm get-parameter --name /rivermark/db/password --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",
-              \"echo 'Starting backend...'\",
-              \"docker run -d --name rivermark-backend --restart unless-stopped -p 5000:5000 -e PORT=5000 -e DB_HOST=$DB_ENDPOINT -e DB_PORT=5432 -e DB_NAME=rivermark -e DB_USER=rivermark_admin -e DB_PASSWORD=\\\"\\$DB_PASSWORD\\\" $ECR_URL:${GITHUB_SHA}\",
-              \"echo 'Deployment command completed.'\"
-            ]" \
+            --parameters 'commands=[
+              "set -e",
+              "echo '\''Logging into ECR...'\''",
+              "aws ecr get-login-password --region '"$AWS_REGION"' | docker login --username AWS --password-stdin '"$ECR_URL"'",
+              "echo '\''Pulling image...'\''",
+              "docker pull '"$ECR_URL:${GITHUB_SHA}"'",
+              "echo '\''Removing previous container...'\''",
+              "docker rm -f rivermark-backend 2>/dev/null || true",
+              "echo '\''Getting DB password from SSM...'\''",
+              "DB_PASSWORD=$(aws ssm get-parameter --name /rivermark/db/password --with-decryption --query Parameter.Value --output text --region '"$AWS_REGION"')",
+              "echo '\''Starting backend...'\''",
+              "docker run -d --name rivermark-backend --restart unless-stopped -p 5000:5000 -e PORT=5000 -e DB_HOST='"$DB_ENDPOINT"' -e DB_PORT=5432 -e DB_NAME=rivermark -e DB_USER=rivermark_admin -e DB_PASSWORD=\"$DB_PASSWORD\" '"$ECR_URL:${GITHUB_SHA}"'",
+              "echo '\''Deployment command completed.'\''"
+            ]' \
             --query 'Command.CommandId' \
             --output text)
 

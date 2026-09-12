@@ -24,20 +24,20 @@ resource "aws_instance" "backend_blue" {
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
   user_data_base64 = base64encode(<<-EOF
-    #!/bin/bash
+  #!/bin/bash
 
-    dnf update -y
+  dnf update -y
 
-    dnf install -y docker
+  dnf install -y docker amazon-ssm-agent
 
-    systemctl enable docker
-    systemctl start docker
+  systemctl enable docker
+  systemctl start docker
 
-    usermod -aG docker ec2-user
+  usermod -aG docker ec2-user
 
-    systemctl enable amazon-ssm-agent
-    systemctl start amazon-ssm-agent
-  EOF
+  systemctl enable amazon-ssm-agent
+  systemctl start amazon-ssm-agent
+EOF
   )
 
   tags = {
@@ -56,22 +56,22 @@ resource "aws_instance" "backend_green" {
 
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
-  user_data_base64 = base64encode(<<-EOF
-    #!/bin/bash
+ user_data_base64 = base64encode(<<-EOF
+  #!/bin/bash
 
-    dnf update -y
+  dnf update -y
 
-    dnf install -y docker
+  dnf install -y docker amazon-ssm-agent
 
-    systemctl enable docker
-    systemctl start docker
+  systemctl enable docker
+  systemctl start docker
 
-    usermod -aG docker ec2-user
+  usermod -aG docker ec2-user
 
-    systemctl enable amazon-ssm-agent
-    systemctl start amazon-ssm-agent
-  EOF
-  )
+  systemctl enable amazon-ssm-agent
+  systemctl start amazon-ssm-agent
+EOF
+)
 
   tags = {
     Name        = "rivermark-backend-green"

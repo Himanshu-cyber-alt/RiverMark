@@ -5,10 +5,11 @@ set -e
 IMAGE="$1"
 CONTAINER_NAME="rivermark-backend"
 PORT="5000"
+AWS_REGION="${AWS_REGION:-ap-south-1}"
 
 if [ -z "$IMAGE" ]; then
   echo "Error: Docker image is required."
-  echo "Usage: ./deploy-backend.sh <image>"
+  echo "Usage: ./deploy.sh <image>"
   exit 1
 fi
 
@@ -16,9 +17,6 @@ echo "======================================"
 echo "Deploying Rivermark backend"
 echo "Image: $IMAGE"
 echo "======================================"
-
-# Login to ECR
-AWS_REGION="${AWS_REGION:-ap-south-1}"
 
 ECR_REGISTRY=$(echo "$IMAGE" | cut -d'/' -f1)
 
@@ -29,17 +27,12 @@ aws ecr get-login-password --region "$AWS_REGION" | \
   --username AWS \
   --password-stdin "$ECR_REGISTRY"
 
-# Pull new image
 echo "Pulling new image..."
-
 docker pull "$IMAGE"
 
-# Remove old container on this EC2
 echo "Removing previous container..."
-
 docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
-# Start new container
 echo "Starting new container..."
 
 docker run -d \
@@ -49,13 +42,11 @@ docker run -d \
   "$IMAGE"
 
 echo "Waiting for application to start..."
-
 sleep 10
 
-# Health check
 echo "Running health check..."
 
-if curl -f http://localhost:$PORT/health; then
+if curl -f "http://localhost:$PORT/health"; then
 
   echo "======================================"
   echo "New backend is healthy."
