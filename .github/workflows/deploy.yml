@@ -18,8 +18,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # ========================================================
+      # Checkout
+      # ========================================================
+
       - name: Checkout code
         uses: actions/checkout@v4
+
+
+      # ========================================================
+      # AWS OIDC
+      # ========================================================
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -27,8 +37,12 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+
+      # ========================================================
+      # Get ECR repository
+      # ========================================================
+
       - name: Get ECR repository URL
-        id: ecr
         run: |
           ECR_URL=$(aws ecr describe-repositories \
             --repository-names "$ECR_REPOSITORY" \
@@ -37,39 +51,72 @@ jobs:
 
           echo "ECR_URL=$ECR_URL" >> "$GITHUB_ENV"
 
+          echo "ECR repository: $ECR_URL"
+
+
+      # ========================================================
+      # Login to ECR
+      # ========================================================
+
       - name: Login to Amazon ECR
         run: |
-          aws ecr get-login-password --region "$AWS_REGION" | \
+          aws ecr get-login-password \
+            --region "$AWS_REGION" | \
           docker login \
             --username AWS \
             --password-stdin "$ECR_URL"
 
-      - name: Build backend Docker image
+
+      # ========================================================
+      # Build Docker image
+      # ========================================================
+
+      - name: Build backend image
         run: |
           docker build \
             -t "$ECR_URL:${GITHUB_SHA}" \
             ./backend
 
-      - name: Push backend image to ECR
+
+      # ========================================================
+      # Push Docker image
+      # ========================================================
+
+      - name: Push backend image
         run: |
           docker push "$ECR_URL:${GITHUB_SHA}"
 
-      - name: Get active backend instance
-        id: active
+
+      # ========================================================
+      # Find active EC2
+      # ========================================================
+
+      - name: Find active backend
         run: |
+
+          ALLOCATION_ID=$(aws ec2 describe-addresses \
+            --filters Name=tag:Name,Values=rivermark-backend-eip \
+            --query 'Addresses[0].AllocationId' \
+            --output text)
+
           ACTIVE_INSTANCE=$(aws ec2 describe-addresses \
-            --allocation-ids "$(aws ec2 describe-addresses \
-              --filters Name=tag:Name,Values=rivermark-backend-eip \
-              --query 'Addresses[0].AllocationId' \
-              --output text)" \
+            --allocation-ids "$ALLOCATION_ID" \
             --query 'Addresses[0].InstanceId' \
             --output text)
 
-          echo "Active instance: $ACTIVE_INSTANCE"
+          echo "ALLOCATION_ID=$ALLOCATION_ID" >> "$GITHUB_ENV"
           echo "ACTIVE_INSTANCE=$ACTIVE_INSTANCE" >> "$GITHUB_ENV"
 
-      - name: Determine inactive backend
+          echo "Active EC2: $ACTIVE_INSTANCE"
+
+
+      # ========================================================
+      # Find inactive EC2
+      # ========================================================
+
+      - name: Find inactive backend
         run: |
+
           BLUE_ID=$(aws ec2 describe-instances \
             --filters \
               Name=tag:Name,Values=rivermark-backend-blue \
@@ -90,24 +137,37 @@ jobs:
             TARGET_INSTANCE="$BLUE_ID"
           fi
 
-          echo "Blue instance: $BLUE_ID"
-          echo "Green instance: $GREEN_ID"
-          echo "Target instance: $TARGET_INSTANCE"
+          echo "BLUE_ID=$BLUE_ID"
+          echo "GREEN_ID=$GREEN_ID"
+          echo "TARGET_INSTANCE=$TARGET_INSTANCE"
 
           echo "TARGET_INSTANCE=$TARGET_INSTANCE" >> "$GITHUB_ENV"
 
+
+      # ========================================================
+      # Get RDS endpoint
+      # ========================================================
+
       - name: Get RDS endpoint
         run: |
+
           DB_ENDPOINT=$(aws rds describe-db-instances \
             --db-instance-identifier rivermark-postgres \
             --query 'DBInstances[0].Endpoint.Address' \
             --output text)
 
-          echo "RDS endpoint: $DB_ENDPOINT"
           echo "DB_ENDPOINT=$DB_ENDPOINT" >> "$GITHUB_ENV"
+
+          echo "RDS endpoint: $DB_ENDPOINT"
+
+
+      # ========================================================
+      # Deploy to inactive EC2
+      # ========================================================
 
       - name: Deploy to inactive EC2 using SSM
         run: |
+
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "$TARGET_INSTANCE" \
             --document-name "AWS-RunShellScript" \
@@ -115,25 +175,33 @@ jobs:
               \"set -e\",
               \"echo 'Logging into ECR...'\",
               \"aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_URL\",
-              \"echo 'Pulling new image...'\",
+              \"echo 'Pulling image...'\",
               \"docker pull $ECR_URL:${GITHUB_SHA}\",
-              \"echo 'Stopping previous inactive container if present...'\",
+              \"echo 'Removing previous container...'\",
               \"docker rm -f rivermark-backend 2>/dev/null || true\",
-              \"echo 'Starting new container...'\",
+              \"echo 'Getting DB password from SSM...'\",
               \"DB_PASSWORD=\\$(aws ssm get-parameter --name /rivermark/db/password --with-decryption --query Parameter.Value --output text --region $AWS_REGION)\",
-              \"docker run -d --name rivermark-backend --restart unless-stopped -p 5000:5000 -e PORT=5000 -e DB_HOST=$DB_ENDPOINT -e DB_PORT=5432 -e DB_NAME=rivermark -e DB_USER=rivermark_admin -e DB_PASSWORD=\\\"\\$DB_PASSWORD\\\" $ECR_URL:${GITHUB_SHA}\"
+              \"echo 'Starting backend...'\",
+              \"docker run -d --name rivermark-backend --restart unless-stopped -p 5000:5000 -e PORT=5000 -e DB_HOST=$DB_ENDPOINT -e DB_PORT=5432 -e DB_NAME=rivermark -e DB_USER=rivermark_admin -e DB_PASSWORD=\\\"\\$DB_PASSWORD\\\" $ECR_URL:${GITHUB_SHA}\",
+              \"echo 'Deployment command completed.'\"
             ]" \
             --query 'Command.CommandId' \
             --output text)
 
-          echo "SSM command: $COMMAND_ID"
           echo "COMMAND_ID=$COMMAND_ID" >> "$GITHUB_ENV"
 
-      - name: Wait for deployment command
+          echo "SSM Command ID: $COMMAND_ID"
+
+
+      # ========================================================
+      # Wait for SSM
+      # ========================================================
+
+      - name: Wait for deployment
         run: |
-          echo "Waiting for SSM deployment..."
 
           for i in {1..30}; do
+
             STATUS=$(aws ssm get-command-invocation \
               --command-id "$COMMAND_ID" \
               --instance-id "$TARGET_INSTANCE" \
@@ -149,25 +217,36 @@ jobs:
             if [ "$STATUS" = "Failed" ] || \
                [ "$STATUS" = "Cancelled" ] || \
                [ "$STATUS" = "TimedOut" ]; then
-              echo "Deployment command failed."
+
+              echo "Deployment failed."
+
               aws ssm get-command-invocation \
                 --command-id "$COMMAND_ID" \
                 --instance-id "$TARGET_INSTANCE"
+
               exit 1
             fi
 
             sleep 5
+
           done
 
-          echo "Timed out waiting for SSM command."
+          echo "Deployment timed out."
           exit 1
 
-      - name: Health check inactive EC2
+
+      # ========================================================
+      # Health check
+      # ========================================================
+
+      - name: Health check new backend
         run: |
+
           echo "Checking new backend..."
 
           for i in {1..12}; do
-            HEALTH=$(aws ssm send-command \
+
+            HEALTH_COMMAND=$(aws ssm send-command \
               --instance-ids "$TARGET_INSTANCE" \
               --document-name "AWS-RunShellScript" \
               --parameters commands='["curl -f http://localhost:5000/health"]' \
@@ -177,32 +256,36 @@ jobs:
             sleep 3
 
             STATUS=$(aws ssm get-command-invocation \
-              --command-id "$HEALTH" \
+              --command-id "$HEALTH_COMMAND" \
               --instance-id "$TARGET_INSTANCE" \
               --query 'Status' \
               --output text)
+
+            echo "Health check status: $STATUS"
 
             if [ "$STATUS" = "Success" ]; then
               echo "New backend is healthy."
               exit 0
             fi
 
-            echo "Health check attempt $i failed."
             sleep 5
+
           done
 
           echo "New backend failed health check."
-          echo "Old backend will remain active."
+          echo "EIP will NOT be switched."
+
           exit 1
 
-      - name: Switch Elastic IP to new backend
-        run: |
-          ALLOCATION_ID=$(aws ec2 describe-addresses \
-            --filters Name=tag:Name,Values=rivermark-backend-eip \
-            --query 'Addresses[0].AllocationId' \
-            --output text)
 
-          echo "Switching EIP to $TARGET_INSTANCE..."
+      # ========================================================
+      # Switch Elastic IP
+      # ========================================================
+
+      - name: Switch traffic to new backend
+        run: |
+
+          echo "Switching EIP..."
 
           aws ec2 associate-address \
             --allocation-id "$ALLOCATION_ID" \
@@ -211,10 +294,22 @@ jobs:
 
           echo "Traffic switched successfully."
 
+
+      # ========================================================
+      # Success
+      # ========================================================
+
       - name: Deployment successful
         run: |
+
           echo "======================================"
           echo "Rivermark deployment successful"
-          echo "Image: $ECR_URL:${GITHUB_SHA}"
-          echo "Active instance: $TARGET_INSTANCE"
+          echo "======================================"
+
+          echo "Docker image:"
+          echo "$ECR_URL:${GITHUB_SHA}"
+
+          echo "Active EC2:"
+          echo "$TARGET_INSTANCE"
+
           echo "======================================"
