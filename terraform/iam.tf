@@ -67,6 +67,9 @@ resource "aws_iam_role_policy" "github_actions" {
       # ECR authentication
       # --------------------------------------------------------
 
+
+
+
       {
         Effect = "Allow"
 
@@ -110,6 +113,18 @@ resource "aws_iam_role_policy" "github_actions" {
 
         Resource = "*"
       },
+
+
+      {
+        Effect = "Allow"
+
+        Action = [
+          "ssm:GetParameter"
+        ]
+
+        Resource = aws_ssm_parameter.db_password.arn
+      },
+
 
       # --------------------------------------------------------
       # EC2 information
