@@ -19,17 +19,13 @@ jobs:
 
     steps:
 
-      # ========================================================
-      # Checkout
-      # ========================================================
+     
 
       - name: Checkout code
         uses: actions/checkout@v4
 
 
-      # ========================================================
-      # AWS OIDC
-      # ========================================================
+    
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -38,9 +34,9 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
 
-      # ========================================================
-      # Get ECR repository
-      # ========================================================
+     
+      # get ecr 
+     
 
       - name: Get ECR repository URL
         run: |
@@ -54,9 +50,7 @@ jobs:
           echo "ECR repository: $ECR_URL"
 
 
-      # ========================================================
-      # Login to ECR
-      # ========================================================
+      # lotgin to ecr
 
       - name: Login to Amazon ECR
         run: |
@@ -67,9 +61,7 @@ jobs:
             --password-stdin "$ECR_URL"
 
 
-      # ========================================================
-      # Build Docker image
-      # ========================================================
+      #  build image
 
       - name: Build backend image
         run: |
@@ -78,18 +70,14 @@ jobs:
             ./backend
 
 
-      # ========================================================
-      # Push Docker image
-      # ========================================================
+      # push to ecr
 
       - name: Push backend image
         run: |
           docker push "$ECR_URL:${GITHUB_SHA}"
 
 
-      # ========================================================
-      # Find active EC2
-      # ========================================================
+      # find active ec2 s
 
       - name: Find active backend
         run: |
@@ -110,9 +98,7 @@ jobs:
           echo "Active EC2: $ACTIVE_INSTANCE"
 
 
-      # ========================================================
-      # Find inactive EC2
-      # ========================================================
+      # find inactive ec2
 
       - name: Find inactive backend
         run: |
@@ -144,9 +130,7 @@ jobs:
           echo "TARGET_INSTANCE=$TARGET_INSTANCE" >> "$GITHUB_ENV"
 
 
-      # ========================================================
-      # Get RDS endpoint
-      # ========================================================
+      # get rds point
 
       - name: Get RDS endpoint
         run: |
@@ -161,9 +145,7 @@ jobs:
           echo "RDS endpoint: $DB_ENDPOINT"
 
 
-      # ========================================================
-      # Deploy to inactive EC2
-      # ========================================================
+      # to to inactive ec2 using ssm
 
   
 
@@ -195,9 +177,7 @@ jobs:
           echo "SSM Command ID: $COMMAND_ID"
 
 
-      # ========================================================
-      # Wait for SSM
-      # ========================================================
+      
 
       - name: Wait for deployment
         run: |
@@ -237,14 +217,12 @@ jobs:
           exit 1
 
 
-      # ========================================================
-      # Health check
-      # ========================================================
+   
 
       - name: Health check new backend
         run: |
 
-          echo "Checking new backend..."
+          echo "Checking new backend"
 
           for i in {1..12}; do
 
@@ -280,9 +258,7 @@ jobs:
           exit 1
 
 
-      # ========================================================
-      # Switch Elastic IP
-      # ========================================================
+     
 
       - name: Switch traffic to new backend
         run: |
@@ -297,9 +273,7 @@ jobs:
           echo "Traffic switched successfully."
 
 
-      # ========================================================
-      # Success
-      # ========================================================
+     
 
       - name: Deployment successful
         run: |

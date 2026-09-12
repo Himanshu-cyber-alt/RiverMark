@@ -16,9 +16,7 @@ resource "aws_internet_gateway" "rivermark" {
   }
 }
 
-# -------------------------
-# Public subnet - AZ 1
-# -------------------------
+#az-1
 
 resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.rivermark.id
@@ -31,9 +29,7 @@ resource "aws_subnet" "public_a" {
   }
 }
 
-# -------------------------
-# Public subnet - AZ 2
-# -------------------------
+# az-2
 
 resource "aws_subnet" "public_b" {
   vpc_id                  = aws_vpc.rivermark.id
@@ -46,10 +42,7 @@ resource "aws_subnet" "public_b" {
   }
 }
 
-# -------------------------
-# Private subnet - AZ 1
-# -------------------------
-
+# private az-1
 resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.rivermark.id
   cidr_block        = "10.0.2.0/24"
@@ -60,9 +53,7 @@ resource "aws_subnet" "private_a" {
   }
 }
 
-# -------------------------
-# Private subnet - AZ 2
-# -------------------------
+# private az-2
 
 resource "aws_subnet" "private_b" {
   vpc_id            = aws_vpc.rivermark.id
@@ -74,9 +65,7 @@ resource "aws_subnet" "private_b" {
   }
 }
 
-# -------------------------
-# Public route table
-# -------------------------
+# route table
 
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.rivermark.id
@@ -101,9 +90,7 @@ resource "aws_route_table_association" "public_b" {
   route_table_id = aws_route_table.public.id
 }
 
-# -------------------------
-# Private route table
-# -------------------------
+
 
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.rivermark.id

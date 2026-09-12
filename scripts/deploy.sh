@@ -8,15 +8,15 @@ PORT="5000"
 AWS_REGION="${AWS_REGION:-ap-south-1}"
 
 if [ -z "$IMAGE" ]; then
-  echo "Error: Docker image is required."
-  echo "Usage: ./deploy.sh <image>"
+  echo "Error"
+  echo "Usage"
   exit 1
 fi
 
-echo "======================================"
-echo "Deploying Rivermark backend"
+
+echo " Rivermark backend"
 echo "Image: $IMAGE"
-echo "======================================"
+
 
 ECR_REGISTRY=$(echo "$IMAGE" | cut -d'/' -f1)
 
@@ -27,13 +27,13 @@ aws ecr get-login-password --region "$AWS_REGION" | \
   --username AWS \
   --password-stdin "$ECR_REGISTRY"
 
-echo "Pulling new image..."
+echo "Pulling new image"
 docker pull "$IMAGE"
 
-echo "Removing previous container..."
+echo "Removing"
 docker rm -f "$CONTAINER_NAME" 2>/dev/null || true
 
-echo "Starting new container..."
+echo "Starting new container"
 
 docker run -d \
   --name "$CONTAINER_NAME" \
@@ -41,24 +41,24 @@ docker run -d \
   -p "$PORT:5000" \
   "$IMAGE"
 
-echo "Waiting for application to start..."
+echo "Waiting for application to start"
 sleep 10
 
 echo "Running health check..."
 
 if curl -f "http://localhost:$PORT/health"; then
 
-  echo "======================================"
-  echo "New backend is healthy."
-  echo "Deployment successful."
-  echo "======================================"
+
+ 
+  echo "yes"
+
 
 else
 
-  echo "======================================"
-  echo "New backend failed health check."
-  echo "Deployment failed."
-  echo "======================================"
+
+
+  echo "no"
+
 
   docker logs "$CONTAINER_NAME" || true
 

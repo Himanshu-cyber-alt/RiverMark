@@ -1,6 +1,4 @@
-# ============================================================
-# GitHub Actions OIDC Provider
-# ============================================================
+
 
 resource "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
@@ -14,9 +12,7 @@ resource "aws_iam_openid_connect_provider" "github" {
   }
 }
 
-# ============================================================
-# GitHub Actions IAM Role
-# ============================================================
+
 
 resource "aws_iam_role" "github_actions" {
   name = "rivermark-github-actions-role"
@@ -50,9 +46,7 @@ resource "aws_iam_role" "github_actions" {
   }
 }
 
-# ============================================================
-# GitHub Actions Permissions
-# ============================================================
+
 
 resource "aws_iam_role_policy" "github_actions" {
   name = "rivermark-github-actions-policy"
@@ -63,9 +57,7 @@ resource "aws_iam_role_policy" "github_actions" {
 
     Statement = [
 
-      # --------------------------------------------------------
-      # ECR authentication
-      # --------------------------------------------------------
+
 
 
 
@@ -80,9 +72,7 @@ resource "aws_iam_role_policy" "github_actions" {
         Resource = "*"
       },
 
-      # --------------------------------------------------------
-      # Push Docker image to ECR
-      # --------------------------------------------------------
+
 
       {
         Effect = "Allow"
@@ -99,9 +89,7 @@ resource "aws_iam_role_policy" "github_actions" {
         Resource = aws_ecr_repository.backend.arn
       },
 
-      # --------------------------------------------------------
-      # Deploy through Systems Manager
-      # --------------------------------------------------------
+     
 
       {
         Effect = "Allow"
@@ -126,9 +114,7 @@ resource "aws_iam_role_policy" "github_actions" {
       },
 
 
-      # --------------------------------------------------------
-      # EC2 information
-      # --------------------------------------------------------
+    
 
       {
         Effect = "Allow"
@@ -141,9 +127,7 @@ resource "aws_iam_role_policy" "github_actions" {
         Resource = "*"
       },
 
-      # --------------------------------------------------------
-      # Elastic IP switching
-      # --------------------------------------------------------
+   
 
       {
         Effect = "Allow"
@@ -156,9 +140,7 @@ resource "aws_iam_role_policy" "github_actions" {
         Resource = "*"
       },
 
-      # --------------------------------------------------------
-      # RDS information
-      # --------------------------------------------------------
+    
 
       {
         Effect = "Allow"
@@ -173,9 +155,9 @@ resource "aws_iam_role_policy" "github_actions" {
   })
 }
 
-# ============================================================
-# EC2 IAM Role
-# ============================================================
+
+# iam role
+
 
 resource "aws_iam_role" "ec2" {
   name = "rivermark-ec2-role"
@@ -201,9 +183,7 @@ resource "aws_iam_role" "ec2" {
   }
 }
 
-# ============================================================
-# EC2 → ECR
-# ============================================================
+# ec2   to ecr
 
 resource "aws_iam_role_policy" "ec2_ecr" {
   name = "rivermark-ec2-ecr-policy"
@@ -239,9 +219,8 @@ resource "aws_iam_role_policy" "ec2_ecr" {
   })
 }
 
-# ============================================================
-# EC2 → SSM Parameter Store
-# ============================================================
+
+
 
 resource "aws_iam_role_policy" "ec2_ssm" {
   name = "rivermark-ec2-ssm-policy"
@@ -264,9 +243,7 @@ resource "aws_iam_role_policy" "ec2_ssm" {
   })
 }
 
-# ============================================================
-# EC2 Instance Profile
-# ============================================================
+
 
 resource "aws_iam_instance_profile" "ec2" {
   name = "rivermark-ec2-profile"
@@ -277,9 +254,9 @@ resource "aws_iam_instance_profile" "ec2" {
   }
 }
 
-# ============================================================
-# Systems Manager
-# ============================================================
+
+# for systems managerr
+
 
 resource "aws_iam_role_policy_attachment" "ec2_ssm" {
   role       = aws_iam_role.ec2.name

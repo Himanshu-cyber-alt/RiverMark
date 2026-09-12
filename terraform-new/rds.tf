@@ -1,6 +1,4 @@
-# -------------------------
-# RDS subnet group
-# -------------------------
+# subnet group
 
 resource "aws_db_subnet_group" "rivermark" {
   name = "rivermark-db-subnet-group"
@@ -15,9 +13,7 @@ resource "aws_db_subnet_group" "rivermark" {
   }
 }
 
-# -------------------------
-# RDS PostgreSQL
-# -------------------------
+
 
 resource "aws_db_instance" "rivermark" {
   identifier = "rivermark-postgres"
@@ -26,6 +22,7 @@ resource "aws_db_instance" "rivermark" {
   engine_version = "16"
 
   instance_class = "db.t3.micro"
+  
 
   allocated_storage = 20
   storage_type      = "gp3"
