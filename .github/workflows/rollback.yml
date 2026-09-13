@@ -1,4 +1,4 @@
-name: Rollback Rivermark Backend
+name: Rollback Rivermark Backend v1 
 
 on:
   workflow_dispatch:
