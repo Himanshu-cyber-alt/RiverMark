@@ -23,6 +23,11 @@ resource "aws_instance" "backend_blue" {
 
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
   user_data_base64 = base64encode(<<-EOF
   #!/bin/bash
 
@@ -56,7 +61,12 @@ resource "aws_instance" "backend_green" {
 
   iam_instance_profile = aws_iam_instance_profile.ec2.name
 
- user_data_base64 = base64encode(<<-EOF
+  root_block_device {
+    volume_size = 20
+    volume_type = "gp3"
+  }
+
+  user_data_base64 = base64encode(<<-EOF
   #!/bin/bash
 
   dnf update -y
@@ -71,7 +81,7 @@ resource "aws_instance" "backend_green" {
   systemctl enable amazon-ssm-agent
   systemctl start amazon-ssm-agent
 EOF
-)
+  )
 
   tags = {
     Name        = "rivermark-backend-green"
