@@ -10,7 +10,7 @@ app.use(express.json());
 app.get("/",(req,res)=>{
     
        res.status(200).json({
-        status: "Hello from Rivermark backend v3",
+        status: "Hello from Rivermark backend v4",
         server: process.env.SERVER_NAME || "unknown"
     });
 })
@@ -28,9 +28,6 @@ app.get("/api/hello", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-
-throw new Error("fail");
-
 
 
 app.listen(PORT, () => {
