@@ -1,0 +1,144 @@
+name: Rollback Rivermark Backend
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Find the currently active EC2 and the previous EC2
+      - name: Find rollback instance
+        run: |
+
+          ALLOCATION_ID=$(aws ec2 describe-addresses \
+            --filters Name=tag:Name,Values=rivermark-backend-eip \
+            --query 'Addresses[0].AllocationId' \
+            --output text)
+
+          ACTIVE_INSTANCE=$(aws ec2 describe-addresses \
+            --allocation-ids "$ALLOCATION_ID" \
+            --query 'Addresses[0].InstanceId' \
+            --output text)
+
+          BLUE_ID=$(aws ec2 describe-instances \
+            --filters \
+              Name=tag:Name,Values=rivermark-backend-blue \
+              Name=instance-state-name,Values=running \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text)
+
+          GREEN_ID=$(aws ec2 describe-instances \
+            --filters \
+              Name=tag:Name,Values=rivermark-backend-green \
+              Name=instance-state-name,Values=running \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text)
+
+          if [ "$ACTIVE_INSTANCE" = "$BLUE_ID" ]; then
+            ROLLBACK_INSTANCE="$GREEN_ID"
+            ROLLBACK_NAME="GREEN"
+          else
+            ROLLBACK_INSTANCE="$BLUE_ID"
+            ROLLBACK_NAME="BLUE"
+          fi
+
+          echo "Active instance: $ACTIVE_INSTANCE"
+          echo "Rollback instance: $ROLLBACK_INSTANCE"
+          echo "Rollback server: $ROLLBACK_NAME"
+
+          echo "ALLOCATION_ID=$ALLOCATION_ID" >> "$GITHUB_ENV"
+          echo "ROLLBACK_INSTANCE=$ROLLBACK_INSTANCE" >> "$GITHUB_ENV"
+          echo "ROLLBACK_NAME=$ROLLBACK_NAME" >> "$GITHUB_ENV"
+
+      # Make sure the previous instance is healthy
+      - name: Check rollback instance health
+        run: |
+
+          echo "Checking $ROLLBACK_NAME..."
+
+          HEALTH_COMMAND=$(aws ssm send-command \
+            --instance-ids "$ROLLBACK_INSTANCE" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands='["curl -f http://localhost:5000/health"]' \
+            --query 'Command.CommandId' \
+            --output text)
+
+          echo "Health command: $HEALTH_COMMAND"
+
+          for i in {1..12}; do
+
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$HEALTH_COMMAND" \
+              --instance-id "$ROLLBACK_INSTANCE" \
+              --query 'Status' \
+              --output text)
+
+            echo "Health check status: $STATUS"
+
+            if [ "$STATUS" = "Success" ]; then
+              echo "$ROLLBACK_NAME is healthy."
+              exit 0
+            fi
+
+            if [ "$STATUS" = "Failed" ] || \
+               [ "$STATUS" = "Cancelled" ] || \
+               [ "$STATUS" = "TimedOut" ]; then
+
+              echo "Rollback instance health check failed."
+              exit 1
+            fi
+
+            sleep 5
+
+          done
+
+          echo "Rollback health check timed out."
+          exit 1
+
+      # Move Elastic IP back to previous version
+      - name: Switch Elastic IP
+        run: |
+
+          echo "Rolling back to $ROLLBACK_NAME..."
+
+          aws ec2 associate-address \
+            --allocation-id "$ALLOCATION_ID" \
+            --instance-id "$ROLLBACK_INSTANCE" \
+            --allow-reassociation
+
+          echo "Elastic IP moved successfully."
+
+      # Final confirmation
+      - name: Verify rollback
+        run: |
+
+          echo "======================================"
+          echo "Rivermark rollback successful"
+          echo "======================================"
+
+          echo "Active server:"
+          echo "$ROLLBACK_NAME"
+
+          echo "Instance:"
+          echo "$ROLLBACK_INSTANCE"
+
+          echo "Elastic IP:"
+          echo "13.203.237.45"
+
+          echo "======================================"
