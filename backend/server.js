@@ -29,7 +29,7 @@ app.get("/api/hello", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 
-throw new Error("Deliberate startup failure for deployment test");
+throw new Error("Deliberate startup failure for deployment test check ");
 
 
 
