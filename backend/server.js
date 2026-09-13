@@ -30,8 +30,6 @@ app.get("/api/hello", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 
-throw new Error("fail");
-
 
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
