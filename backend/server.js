@@ -10,7 +10,7 @@ app.use(express.json());
 app.get("/",(req,res)=>{
     
        res.status(200).json({
-        status: "Backend Is Running 2026"
+        status: "Hello from Rivermark backend v2"
     });
 })
 
