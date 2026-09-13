@@ -29,9 +29,6 @@ app.get("/api/hello", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 
-throw new Error("Deliberate startup failure for deployment test check ");
-
-
 
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
