@@ -10,7 +10,8 @@ app.use(express.json());
 app.get("/",(req,res)=>{
     
        res.status(200).json({
-        status: "Hello from Rivermark backend v3"
+        status: "Hello from Rivermark backend v3",
+        server: process.env.SERVER_NAME || "unknown"
     });
 })
 

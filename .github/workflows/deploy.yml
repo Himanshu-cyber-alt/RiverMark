@@ -19,13 +19,8 @@ jobs:
 
     steps:
 
-     
-
       - name: Checkout code
         uses: actions/checkout@v4
-
-
-    
 
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -33,11 +28,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-
-     
-      # get ecr 
-     
-
+      # Get ECR repository URL
       - name: Get ECR repository URL
         run: |
           ECR_URL=$(aws ecr describe-repositories \
@@ -49,9 +40,7 @@ jobs:
 
           echo "ECR repository: $ECR_URL"
 
-
-      # lotgin to ecr
-
+      # Login to ECR
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password \
@@ -60,25 +49,19 @@ jobs:
             --username AWS \
             --password-stdin "$ECR_URL"
 
-
-      #  build image
-
+      # Build image
       - name: Build backend image
         run: |
           docker build \
             -t "$ECR_URL:${GITHUB_SHA}" \
             ./backend
 
-
-      # push to ecr
-
+      # Push image
       - name: Push backend image
         run: |
           docker push "$ECR_URL:${GITHUB_SHA}"
 
-
-      # find active ec2 s
-
+      # Find active EC2
       - name: Find active backend
         run: |
 
@@ -97,9 +80,7 @@ jobs:
 
           echo "Active EC2: $ACTIVE_INSTANCE"
 
-
-      # find inactive ec2
-
+      # Find inactive EC2
       - name: Find inactive backend
         run: |
 
@@ -119,19 +100,21 @@ jobs:
 
           if [ "$ACTIVE_INSTANCE" = "$BLUE_ID" ]; then
             TARGET_INSTANCE="$GREEN_ID"
+            TARGET_NAME="GREEN"
           else
             TARGET_INSTANCE="$BLUE_ID"
+            TARGET_NAME="BLUE"
           fi
 
           echo "BLUE_ID=$BLUE_ID"
           echo "GREEN_ID=$GREEN_ID"
           echo "TARGET_INSTANCE=$TARGET_INSTANCE"
+          echo "TARGET_NAME=$TARGET_NAME"
 
           echo "TARGET_INSTANCE=$TARGET_INSTANCE" >> "$GITHUB_ENV"
+          echo "TARGET_NAME=$TARGET_NAME" >> "$GITHUB_ENV"
 
-
-      # get rds point
-
+      # Get RDS endpoint
       - name: Get RDS endpoint
         run: |
 
@@ -144,11 +127,7 @@ jobs:
 
           echo "RDS endpoint: $DB_ENDPOINT"
 
-
-      # to to inactive ec2 using ssm
-
-  
-
+      # Deploy to inactive EC2 using SSM
       - name: Deploy to inactive EC2 using SSM
         run: |
 
@@ -166,7 +145,7 @@ jobs:
               "echo '\''Getting DB password from SSM...'\''",
               "DB_PASSWORD=$(aws ssm get-parameter --name /rivermark/db/password --with-decryption --query Parameter.Value --output text --region '"$AWS_REGION"')",
               "echo '\''Starting backend...'\''",
-              "docker run -d --name rivermark-backend --restart unless-stopped -p 5000:5000 -e PORT=5000 -e DB_HOST='"$DB_ENDPOINT"' -e DB_PORT=5432 -e DB_NAME=rivermark -e DB_USER=rivermark_admin -e DB_PASSWORD=\"$DB_PASSWORD\" '"$ECR_URL:${GITHUB_SHA}"'",
+              "docker run -d --name rivermark-backend --restart unless-stopped -p 5000:5000 -e PORT=5000 -e SERVER_NAME='"$TARGET_NAME"' -e DB_HOST='"$DB_ENDPOINT"' -e DB_PORT=5432 -e DB_NAME=rivermark -e DB_USER=rivermark_admin -e DB_PASSWORD=\"$DB_PASSWORD\" '"$ECR_URL:${GITHUB_SHA}"'",
               "echo '\''Deployment command completed.'\''"
             ]' \
             --query 'Command.CommandId' \
@@ -176,9 +155,7 @@ jobs:
 
           echo "SSM Command ID: $COMMAND_ID"
 
-
-      
-
+      # Wait for deployment
       - name: Wait for deployment
         run: |
 
@@ -216,9 +193,7 @@ jobs:
           echo "Deployment timed out."
           exit 1
 
-
-   
-
+      # Health check
       - name: Health check new backend
         run: |
 
@@ -257,9 +232,7 @@ jobs:
 
           exit 1
 
-
-     
-
+      # Switch traffic
       - name: Switch traffic to new backend
         run: |
 
@@ -272,9 +245,7 @@ jobs:
 
           echo "Traffic switched successfully."
 
-
-     
-
+      # Deployment successful
       - name: Deployment successful
         run: |
 
@@ -287,5 +258,8 @@ jobs:
 
           echo "Active EC2:"
           echo "$TARGET_INSTANCE"
+
+          echo "Active server:"
+          echo "$TARGET_NAME"
 
           echo "======================================"
