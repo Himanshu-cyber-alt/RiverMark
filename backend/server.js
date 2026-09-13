@@ -10,7 +10,7 @@ app.use(express.json());
 app.get("/",(req,res)=>{
     
        res.status(200).json({
-        status: "Hello from Rivermark backend v2"
+        status: "Hello from Rivermark backend v3"
     });
 })
 
@@ -28,7 +28,6 @@ app.get("/api/hello", (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-throw new Error("Deliberate startup failure for deployment test");
 
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
