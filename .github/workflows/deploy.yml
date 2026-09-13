@@ -28,7 +28,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Get ECR repository URL
+   
       - name: Get ECR repository URL
         run: |
           ECR_URL=$(aws ecr describe-repositories \
@@ -40,7 +40,7 @@ jobs:
 
           echo "ECR repository: $ECR_URL"
 
-      # Login to ECR
+      
       - name: Login to Amazon ECR
         run: |
           aws ecr get-login-password \
@@ -49,19 +49,19 @@ jobs:
             --username AWS \
             --password-stdin "$ECR_URL"
 
-      # Build image
+     
       - name: Build backend image
         run: |
           docker build \
             -t "$ECR_URL:${GITHUB_SHA}" \
             ./backend
 
-      # Push image
+     
       - name: Push backend image
         run: |
           docker push "$ECR_URL:${GITHUB_SHA}"
 
-      # Find active EC2
+     
       - name: Find active backend
         run: |
 
@@ -80,7 +80,7 @@ jobs:
 
           echo "Active EC2: $ACTIVE_INSTANCE"
 
-      # Find inactive EC2
+     
       - name: Find inactive backend
         run: |
 
@@ -114,7 +114,7 @@ jobs:
           echo "TARGET_INSTANCE=$TARGET_INSTANCE" >> "$GITHUB_ENV"
           echo "TARGET_NAME=$TARGET_NAME" >> "$GITHUB_ENV"
 
-      # Get RDS endpoint
+      
       - name: Get RDS endpoint
         run: |
 
@@ -127,7 +127,7 @@ jobs:
 
           echo "RDS endpoint: $DB_ENDPOINT"
 
-      # Deploy to inactive EC2 using SSM
+     
       - name: Deploy to inactive EC2 using SSM
         run: |
 
@@ -155,7 +155,7 @@ jobs:
 
           echo "SSM Command ID: $COMMAND_ID"
 
-      # Wait for deployment
+    
       - name: Wait for deployment
         run: |
 
@@ -193,7 +193,7 @@ jobs:
           echo "Deployment timed out."
           exit 1
 
-      # Health check
+
       - name: Health check new backend
         run: |
 
@@ -232,7 +232,7 @@ jobs:
 
           exit 1
 
-      # Switch traffic
+      
       - name: Switch traffic to new backend
         run: |
 

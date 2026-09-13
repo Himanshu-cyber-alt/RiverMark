@@ -52,6 +52,10 @@ EOF
   }
 }
 
+
+
+// green
+
 resource "aws_instance" "backend_green" {
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = "t3.micro"
